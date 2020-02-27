@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import rospy
 from sauvc2020_control.pid_controller import PIDController
 from sauvc2020_msgs.msg import MotorSpeed
