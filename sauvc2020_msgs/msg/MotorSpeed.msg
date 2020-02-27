@@ -1,8 +1,8 @@
-uint16 motor_id1_input_speed
-uint16 motor_id2_input_speed
-uint16 motor_id3_input_speed
-uint16 motor_id4_input_speed
-uint16 motor_id5_input_speed
-uint16 motor_id6_input_speed
-uint16 motor_id7_input_speed
-uint16 motor_id8_input_speed
+uint16 motor_id1_speed
+uint16 motor_id2_speed
+uint16 motor_id3_speed
+uint16 motor_id4_speed
+uint16 motor_id5_speed
+uint16 motor_id6_speed
+uint16 motor_id7_speed
+uint16 motor_id8_speed
