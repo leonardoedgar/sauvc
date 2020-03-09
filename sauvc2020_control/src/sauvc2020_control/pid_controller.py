@@ -10,35 +10,36 @@ class PIDController(object):
         Args:
             stabilised_speed_publisher (rospy.Publisher): a ROS publisher for motor stabilised speed
         """
-        rospy.Subscriber("/motor/motion", MotionData, self.update_motion_data)
-        rospy.Subscriber("/filter/quaternion", QuaternionStamped, self.get_quaternion_data)
+        rospy.Subscriber("/motor/motion", MotionData, self._update_motion_data)
+        rospy.Subscriber("/filter/quaternion", QuaternionStamped, self._get_quaternion_data)
         self._stabilised_speed_publisher = stabilised_speed_publisher  # type: type(rospy.Publisher)
         self._robot_motion = "stop"  # type: str
         self._P = 100  # type: float
+        motor_initial_speed = 1500  # type: int
         self._motor_stabilised_speed = {
-            "1": int,
-            "2": int,
-            "3": int,
-            "4": int,
-            "5": int,
-            "6": int,
-            "7": int,
-            "8": int,
+            "1": motor_initial_speed,
+            "2": motor_initial_speed,
+            "3": motor_initial_speed,
+            "4": motor_initial_speed,
+            "5": motor_initial_speed,
+            "6": motor_initial_speed,
+            "7": motor_initial_speed,
+            "8": motor_initial_speed,
         }  # type: dict
         self._motor_actual_speed = {
-            "1": int,
-            "2": int,
-            "3": int,
-            "4": int,
-            "5": int,
-            "6": int,
-            "7": int,
-            "8": int,
+            "1": motor_initial_speed,
+            "2": motor_initial_speed,
+            "3": motor_initial_speed,
+            "4": motor_initial_speed,
+            "5": motor_initial_speed,
+            "6": motor_initial_speed,
+            "7": motor_initial_speed,
+            "8": motor_initial_speed,
         }  # type: dict
         self._actual_quaternion = {"x": float, "y": float, "z": float, "w": float}  # type: dict
         self._target_quaternion = {"x": float, "y": float, "z": float, "w": float}  # type: dict
 
-    def update_motion_data(self, msg):
+    def _update_motion_data(self, msg):
         """Update the motion data."""
         if self._robot_motion != msg.motion:
             self._target_quaternion = self._actual_quaternion
@@ -52,14 +53,14 @@ class PIDController(object):
         self._motor_actual_speed["7"] = msg.motors_speed.motor_id7_speed
         self._motor_actual_speed["8"] = msg.motors_speed.motor_id8_speed
 
-    def get_quaternion_data(self, msg):
+    def _get_quaternion_data(self, msg):
         """Get IMU quaternion data."""
         self._actual_quaternion["x"] = msg.quaternion.x
         self._actual_quaternion["y"] = msg.quaternion.y
         self._actual_quaternion["z"] = msg.quaternion.z
         self._actual_quaternion["w"] = msg.quaternion.w
 
-    def compute_forward_movement_error(self):
+    def _compute_forward_movement_error(self):
         """Compute the forward movement error's magnitude and direction."""
         direction_to_compensate = ""
         error = float
@@ -94,21 +95,21 @@ class PIDController(object):
                 error = abs(error)
         return direction_to_compensate, error
 
-    def compute_stabilised_speed(self, motor_id, error, direction):
+    def _compute_stabilised_speed(self, motor_id, error, direction):
         """Compute the stabilised speed from the controller."""
         if direction == "CCW":
             return int(self._motor_actual_speed[motor_id] + self._P*error)
         else:
             return int(self._motor_actual_speed[motor_id] + self._P*error)
 
-    def update_stabilised_speed(self):
+    def _update_stabilised_speed(self):
         """Update the stabilised speed."""
         if self._robot_motion == "forward":
-            direction, error = self.compute_forward_movement_error()
+            direction, error = self._compute_forward_movement_error()
             self._motor_stabilised_speed["1"] = self._motor_actual_speed["1"]
-            self._motor_stabilised_speed["2"] = self.compute_stabilised_speed(2, error, direction)
+            self._motor_stabilised_speed["2"] = self._compute_stabilised_speed(2, error, direction)
             self._motor_stabilised_speed["3"] = self._motor_actual_speed["3"]
-            self._motor_stabilised_speed["4"] = self.compute_stabilised_speed(4, error, direction)
+            self._motor_stabilised_speed["4"] = self._compute_stabilised_speed(4, error, direction)
             self._motor_stabilised_speed["5"] = self._motor_actual_speed["5"]
             self._motor_stabilised_speed["6"] = self._motor_actual_speed["6"]
             self._motor_stabilised_speed["7"] = self._motor_actual_speed["7"]
@@ -116,7 +117,7 @@ class PIDController(object):
 
     def publish_stabilised_speed(self):
         """Publish the stabilised motor speed."""
-        self.update_stabilised_speed()
+        self._update_stabilised_speed()
         self._stabilised_speed_publisher.publish(
             self._motor_stabilised_speed["1"],
             self._motor_stabilised_speed["2"],
