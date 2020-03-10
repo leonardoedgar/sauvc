@@ -1,4 +1,4 @@
 <launch>
-    <node name="control_node" pkg="sauvc2020_control" type="control_node.py">
+    <node name="control_node" pkg="sauvc2020_control" type="control_node.py" output="screen">
     </node>
 </launch>

@@ -6,6 +6,7 @@ import math
 
 class PIDController(object):
     """A class that represent the PID Controller."""
+
     def __init__(self, stabilised_speed_publisher):
         """Initialise the controller
         Args:
@@ -15,7 +16,7 @@ class PIDController(object):
         rospy.Subscriber("/filter/quaternion", QuaternionStamped, self._get_quaternion_data)
         self._stabilised_speed_publisher = stabilised_speed_publisher  # type: type(rospy.Publisher)
         self._robot_motion = "stop"  # type: str
-        self._P = 100  # type: float
+        self._P = 25  # type: float
         motor_initial_speed = 1500  # type: int
         self._motor_stabilised_speed = {
             "1": motor_initial_speed,
@@ -66,70 +67,63 @@ class PIDController(object):
         """Get euler angle from quaternion data."""
         t0 = +2.0 * (w * x + y * z)
         t1 = +1.0 - 2.0 * (x * x + y * y)
-        alpha = math.atan2(t0, t1)*180/math.pi
+        alpha = math.atan2(t0, t1) * 180 / math.pi
         t2 = +2.0 * (w * y - z * x)
         t2 = +1.0 if t2 > +1.0 else t2
         t2 = -1.0 if t2 < -1.0 else t2
-        beta = math.asin(t2)*180/math.pi
+        beta = math.asin(t2) * 180 / math.pi
         t3 = +2.0 * (w * z + x * y)
         t4 = +1.0 - 2.0 * (y * y + z * z)
-        gamma = math.atan2(t3, t4)*180/math.pi
+        gamma = math.atan2(t3, t4) * 180 / math.pi
         return alpha, beta, gamma
 
     def _compute_forward_movement_error(self):
         """Compute the forward movement error's magnitude and direction."""
-        direction_to_compensate = ""
-        error = float
-        # if self._robot_motion == "forward":
-        #     if self._target_quaternion["z"] > 0 and self._actual_quaternion["z"] > 0:
-        #         error = self._target_quaternion["z"] - self._actual_quaternion["z"]
-        #         if error > 0:
-        #             direction_to_compensate = "CW"
-        #         else:
-        #             direction_to_compensate = "CCW"
-        #     elif self._target_quaternion["z"] > 0 and self._actual_quaternion["z"] < 0:
-        #         if self._target_quaternion["z"] > 0.5:
-        #             direction_to_compensate = "CW"
-        #             error = abs(1 - self._target_quaternion["z"] + self._actual_quaternion["z"])
-        #         else:
-        #             direction_to_compensate = "CCW"
-        #             error = self._target_quaternion["z"] - self._actual_quaternion["z"]
-        #
-        #     elif self._target_quaternion["z"] < 0 and self._actual_quaternion["z"] > 0:
-        #         if self._target_quaternion["z"] > -0.5:
-        #             direction_to_compensate = "CCW"
-        #             error = abs(1 + self._target_quaternion["z"] - self._actual_quaternion["z"])
-        #         else:
-        #             direction_to_compensate = "CW"
-        #             error = abs(self._target_quaternion["z"] - self._actual_quaternion["z"])
-        #     else:
-        #         error = self._target_quaternion["z"] - self._actual_quaternion["z"]
-        #         if error > 0:
-        #             direction_to_compensate = "CCW"
-        #         else:
-        #             direction_to_compensate = "CW"
-        #         error = abs(error)
+        if (self._actual_euler["gamma"] >= 0 and self._target_euler["gamma"] >= 0) \
+                or (self._actual_euler["gamma"] < 0 and self._target_euler["gamma"] < 0):
+            error = math.fabs(self._target_euler["gamma"] - self._actual_euler["gamma"])
+            if self._target_euler["gamma"] > self._actual_euler["gamma"]:
+                direction_to_compensate = "CCW"
+            else:
+                direction_to_compensate = "CW"
+        else:
+            if math.fabs(self._actual_euler["gamma"]) > 90 and math.fabs(self._target_euler["gamma"]) > 90:
+                error = math.fabs(180 - math.fabs(self._target_euler["gamma"])) + \
+                        math.fabs(180 - math.fabs(self._actual_euler["gamma"]))
+                if self._target_euler["gamma"] < self._actual_euler["gamma"]:
+                    direction_to_compensate = "CCW"
+                else:
+                    direction_to_compensate = "CW"
+            else:
+                error = math.fabs(self._target_euler["gamma"]) + math.fabs(self._actual_euler["gamma"])
+                if self._target_euler["gamma"] > self._actual_euler["gamma"]:
+                    direction_to_compensate = "CCW"
+                else:
+                    direction_to_compensate = "CW"
         return direction_to_compensate, error
 
     def _compute_stabilised_speed(self, motor_id, error, direction):
         """Compute the stabilised speed from the controller."""
-        if direction == "CCW":
-            return int(self._motor_actual_speed[motor_id] + self._P*error)
-        else:
-            return int(self._motor_actual_speed[motor_id] + self._P*error)
+        if (motor_id == "1" and direction == "CCW") or (motor_id == "2" and direction == "CW"):
+            error = -1*error
+        return int(self._motor_actual_speed[motor_id] + self._P * error)
 
     def _update_stabilised_speed(self):
         """Update the stabilised speed."""
         if self._robot_motion == "forward":
-            direction, error = self._compute_forward_movement_error()
-            self._motor_stabilised_speed["1"] = self._motor_actual_speed["1"]
-            self._motor_stabilised_speed["2"] = self._compute_stabilised_speed(2, error, direction)
-            self._motor_stabilised_speed["3"] = self._motor_actual_speed["3"]
-            self._motor_stabilised_speed["4"] = self._compute_stabilised_speed(4, error, direction)
-            self._motor_stabilised_speed["5"] = self._motor_actual_speed["5"]
-            self._motor_stabilised_speed["6"] = self._motor_actual_speed["6"]
-            self._motor_stabilised_speed["7"] = self._motor_actual_speed["7"]
-            self._motor_stabilised_speed["8"] = self._motor_actual_speed["8"]
+            try:
+                direction, error = self._compute_forward_movement_error()
+            except TypeError:
+                pass
+            else:
+                self._motor_stabilised_speed["1"] = self._compute_stabilised_speed("1", error, direction)
+                self._motor_stabilised_speed["2"] = self._compute_stabilised_speed("2", error, direction)
+                self._motor_stabilised_speed["3"] = self._motor_actual_speed["3"]
+                self._motor_stabilised_speed["4"] = self._motor_actual_speed["4"]
+                self._motor_stabilised_speed["5"] = self._motor_actual_speed["5"]
+                self._motor_stabilised_speed["6"] = self._motor_actual_speed["6"]
+                self._motor_stabilised_speed["7"] = self._motor_actual_speed["7"]
+                self._motor_stabilised_speed["8"] = self._motor_actual_speed["8"]
 
     def publish_stabilised_speed(self):
         """Publish the stabilised motor speed."""

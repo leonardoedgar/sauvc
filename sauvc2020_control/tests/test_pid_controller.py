@@ -56,14 +56,30 @@ def test_update_motion_data(mocker):
     assert pid_controller._motor_actual_speed == motion_data["motors_speed"]
 
 
-def test_compute_forward_movement_error():
+@pytest.mark.parametrize("actual_euler, target_euler, error, direction_to_compensate", [
+    ({"alpha": 0, "beta": 0, "gamma": 10}, {"alpha": 0, "beta": 0, "gamma": 0}, 10, "CW"),
+    ({"alpha": 0, "beta": 0, "gamma": -10}, {"alpha": 0, "beta": 0, "gamma": 0}, 10, "CCW"),
+    ({"alpha": 0, "beta": 0, "gamma": 100}, {"alpha": 0, "beta": 0, "gamma": 90}, 10, "CW"),
+    ({"alpha": 0, "beta": 0, "gamma": 80}, {"alpha": 0, "beta": 0, "gamma": 90}, 10, "CCW"),
+    ({"alpha": 0, "beta": 0, "gamma": 170}, {"alpha": 0, "beta": 0, "gamma": 180}, 10, "CCW"),
+    ({"alpha": 0, "beta": 0, "gamma": -170}, {"alpha": 0, "beta": 0, "gamma": 180}, 10, "CW"),
+    ({"alpha": 0, "beta": 0, "gamma": -100}, {"alpha": 0, "beta": 0, "gamma": -90}, 10, "CCW"),
+    ({"alpha": 0, "beta": 0, "gamma": -80}, {"alpha": 0, "beta": 0, "gamma": -90}, 10, "CW"),
+])
+def test_compute_forward_movement_error(actual_euler, target_euler, error, direction_to_compensate):
     """Test that PID Controller is able to compute forward movement error."""
-    assert True
+    pid_controller = get_sample_pid_controller()
+    pid_controller._actual_euler, pid_controller._target_euler = actual_euler, target_euler
+    allowable_tolerance = 0.1
+    actual_dir_to_compensate, actual_error = pid_controller._compute_forward_movement_error()
+    assert actual_dir_to_compensate == direction_to_compensate
+    print("actual error: " + str(actual_error))
+    assert math.fabs(actual_error - error) <= allowable_tolerance
 
 
 @pytest.mark.parametrize("motor_id, error, direction, stabilised_speed", [
-    ("1", 0.2, "CCW", 1520),
-    ("5", 0.3, "CW", 1530)
+    ("1", 3, "CCW", 1575),
+    ("2", 2, "CW", 1550)
 ])
 def test_compute_stabilised_speed(motor_id, error, direction, stabilised_speed):
     """Test that PID Controller is able to compute stabilised speed correctly."""
@@ -75,9 +91,9 @@ def test_update_stabilised_speed(mocker):
     """Test that PID Controller is able to update its stabilised speed."""
     pid_controller, motors_speed = get_pid_controller_with_mocked_actual_motors_speed()
     pid_controller._compute_forward_movement_error = mocker.MagicMock()
-    pid_controller._compute_forward_movement_error.return_value = "CW", 0.1
+    pid_controller._compute_forward_movement_error.return_value = "CW", 0.01
     pid_controller._compute_stabilised_speed = mocker.MagicMock()
-    pid_controller._compute_stabilised_speed.side_effect = [motors_speed["2"], motors_speed["4"]]
+    pid_controller._compute_stabilised_speed.side_effect = [motors_speed["1"], motors_speed["2"]]
     pid_controller._robot_motion = "forward"
     pid_controller._update_stabilised_speed()
     assert pid_controller._motor_stabilised_speed == motors_speed
