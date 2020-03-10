@@ -3,6 +3,7 @@ import rospy
 from sauvc2020_control import PIDController
 from sauvc2020_msgs.msg import MotorSpeed
 import pytest
+import math
 
 
 def test_publish_stabilised_speed(mocker):
@@ -25,16 +26,31 @@ def test_get_quarternion_data(mocker):
     """Test that PiD Controller is able to get quaternion data."""
     pid_controller = get_sample_pid_controller()
     msg = mocker.MagicMock()
-    w, x, y, z = 0.4, 0.7, 0.6, 0.5
+    w, x, y, z = 0, 0.1, 0.3, 0.5
+    alpha, beta, gamma = 0, 45, 90
+    mocked_get_euler_angle_from_quat = \
+        mocker.patch('sauvc2020_control.pid_controller.PIDController.get_euler_angle_from_quat')
+    PIDController.get_euler_angle_from_quat.return_value = alpha, beta, gamma
     msg.quaternion.w, msg.quaternion.x, msg.quaternion.y, msg.quaternion.z = w, x, y, z
     pid_controller._get_quaternion_data(msg)
-    assert pid_controller._actual_quaternion == {"w": w, "x": x, "y": y, "z": z}
+    assert mocked_get_euler_angle_from_quat.call_args[0] == (w, x, y, z)
+    assert pid_controller._actual_euler == {"alpha": alpha, "beta": beta, "gamma": gamma}
+
+
+def test_get_euler_angle_from_quaternion():
+    """Test that PID Controller is able to get euler angle from quaternion."""
+    w, x, y, z = 0, 0, math.sin(math.pi/4), math.cos(math.pi/4)
+    desired_alpha, desired_beta, desired_gamma = 90, 0, 180
+    tolerable_error = 0.1
+    actual_alpha, actual_beta, actual_gamma = PIDController.get_euler_angle_from_quat(w, x, y, z)
+    assert (math.fabs(actual_alpha - desired_alpha), math.fabs(actual_beta - desired_beta),
+            math.fabs(actual_gamma - desired_gamma)) <= (tolerable_error, tolerable_error, tolerable_error)
 
 
 def test_update_motion_data(mocker):
     """Test that PID Controller is able to update its motion data."""
     pid_controller = get_sample_pid_controller()
-    msg, motion_data = mocked_motion_data(mocker)
+    msg, motion_data = get_mocked_motion_data(mocker)
     pid_controller._update_motion_data(msg)
     assert pid_controller._robot_motion == motion_data["motion"]
     assert pid_controller._motor_actual_speed == motion_data["motors_speed"]
@@ -72,7 +88,7 @@ def get_sample_pid_controller():
     return PIDController(rospy.Publisher('/motor/stabilised_speed', MotorSpeed, queue_size=10))
 
 
-def mocked_motion_data(mocker):
+def get_mocked_motion_data(mocker):
     """A function to get mocked motion data"""
     msg = mocker.MagicMock()
     motion_data = {
