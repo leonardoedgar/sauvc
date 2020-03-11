@@ -8,4 +8,5 @@ if __name__ == '__main__':
     pid_controller = PIDController(rospy.Publisher("/thrusters/stabilised_speed", ThrustersSpeed, queue_size=10))
     while not rospy.is_shutdown():
         pid_controller.publish_stabilised_speed()
+        print(pid_controller._thrusters_actual_speed)
         rospy.sleep(1)

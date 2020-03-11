@@ -44,7 +44,9 @@ class PIDController(object):
     def _update_motion_data(self, msg):
         """Update the motion data."""
         if self._auv_motion != msg.motion:
-            self._target_euler = self._target_euler
+            self._target_euler["alpha"] = self._actual_euler["alpha"]
+            self._target_euler["beta"] = self._actual_euler["beta"]
+            self._target_euler["gamma"] = self._actual_euler["gamma"]
             self._auv_motion = msg.motion
         self._thrusters_actual_speed["1"] = msg.thrusters_speed.thruster_id1_speed
         self._thrusters_actual_speed["2"] = msg.thrusters_speed.thruster_id2_speed
