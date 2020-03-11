@@ -1,5 +1,5 @@
 import rospy
-from sauvc2020_msgs.msg import MotionData
+from sauvc_msgs.msg import MotionData
 from geometry_msgs.msg import QuaternionStamped
 import math
 
@@ -12,48 +12,48 @@ class PIDController(object):
         Args:
             stabilised_speed_publisher (rospy.Publisher): a ROS publisher for motor stabilised speed
         """
-        rospy.Subscriber("/motor/motion", MotionData, self._update_motion_data)
+        rospy.Subscriber("/auv/motion", MotionData, self._update_motion_data)
         rospy.Subscriber("/filter/quaternion", QuaternionStamped, self._get_quaternion_data)
         self._stabilised_speed_publisher = stabilised_speed_publisher  # type: type(rospy.Publisher)
-        self._robot_motion = "stop"  # type: str
+        self._auv_motion = "stop"  # type: str
         self._P = 25  # type: float
-        motor_initial_speed = 1500  # type: int
-        self._motor_stabilised_speed = {
-            "1": motor_initial_speed,
-            "2": motor_initial_speed,
-            "3": motor_initial_speed,
-            "4": motor_initial_speed,
-            "5": motor_initial_speed,
-            "6": motor_initial_speed,
-            "7": motor_initial_speed,
-            "8": motor_initial_speed,
+        thruster_initial_speed = 1500  # type: int
+        self._thrusters_stabilised_speed = {
+            "1": thruster_initial_speed,
+            "2": thruster_initial_speed,
+            "3": thruster_initial_speed,
+            "4": thruster_initial_speed,
+            "5": thruster_initial_speed,
+            "6": thruster_initial_speed,
+            "7": thruster_initial_speed,
+            "8": thruster_initial_speed
         }  # type: dict
-        self._motor_actual_speed = {
-            "1": motor_initial_speed,
-            "2": motor_initial_speed,
-            "3": motor_initial_speed,
-            "4": motor_initial_speed,
-            "5": motor_initial_speed,
-            "6": motor_initial_speed,
-            "7": motor_initial_speed,
-            "8": motor_initial_speed,
+        self._thrusters_actual_speed = {
+            "1": thruster_initial_speed,
+            "2": thruster_initial_speed,
+            "3": thruster_initial_speed,
+            "4": thruster_initial_speed,
+            "5": thruster_initial_speed,
+            "6": thruster_initial_speed,
+            "7": thruster_initial_speed,
+            "8": thruster_initial_speed
         }  # type: dict
         self._actual_euler = {"alpha": float, "beta": float, "gamma": float}  # type: dict
         self._target_euler = {"alpha": float, "beta": float, "gamma": float}  # type: dict
 
     def _update_motion_data(self, msg):
         """Update the motion data."""
-        if self._robot_motion != msg.motion:
+        if self._auv_motion != msg.motion:
             self._target_euler = self._target_euler
-            self._robot_motion = msg.motion
-        self._motor_actual_speed["1"] = msg.motors_speed.motor_id1_speed
-        self._motor_actual_speed["2"] = msg.motors_speed.motor_id2_speed
-        self._motor_actual_speed["3"] = msg.motors_speed.motor_id3_speed
-        self._motor_actual_speed["4"] = msg.motors_speed.motor_id4_speed
-        self._motor_actual_speed["5"] = msg.motors_speed.motor_id5_speed
-        self._motor_actual_speed["6"] = msg.motors_speed.motor_id6_speed
-        self._motor_actual_speed["7"] = msg.motors_speed.motor_id7_speed
-        self._motor_actual_speed["8"] = msg.motors_speed.motor_id8_speed
+            self._auv_motion = msg.motion
+        self._thrusters_actual_speed["1"] = msg.thrusters_speed.thruster_id1_speed
+        self._thrusters_actual_speed["2"] = msg.thrusters_speed.thruster_id2_speed
+        self._thrusters_actual_speed["3"] = msg.thrusters_speed.thruster_id3_speed
+        self._thrusters_actual_speed["4"] = msg.thrusters_speed.thruster_id4_speed
+        self._thrusters_actual_speed["5"] = msg.thrusters_speed.thruster_id5_speed
+        self._thrusters_actual_speed["6"] = msg.thrusters_speed.thruster_id6_speed
+        self._thrusters_actual_speed["7"] = msg.thrusters_speed.thruster_id7_speed
+        self._thrusters_actual_speed["8"] = msg.thrusters_speed.thruster_id8_speed
 
     def _get_quaternion_data(self, msg):
         """Get IMU quaternion data."""
@@ -102,39 +102,42 @@ class PIDController(object):
                     direction_to_compensate = "CW"
         return direction_to_compensate, error
 
-    def _compute_stabilised_speed(self, motor_id, error, direction):
+    def _compute_stabilised_speed(self, thruster_id, error, direction_to_compensate):
         """Compute the stabilised speed from the controller."""
-        if (motor_id == "1" and direction == "CCW") or (motor_id == "2" and direction == "CW"):
+        if (thruster_id == "1" and direction_to_compensate == "CW") or \
+                (thruster_id == "2" and direction_to_compensate == "CCW"):
             error = -1*error
-        return int(self._motor_actual_speed[motor_id] + self._P * error)
+        return int(self._thrusters_actual_speed[thruster_id] + self._P * error)
 
     def _update_stabilised_speed(self):
         """Update the stabilised speed."""
-        if self._robot_motion == "forward":
+        if self._auv_motion == "forward":
             try:
-                direction, error = self._compute_forward_movement_error()
+                direction_to_compensate, error = self._compute_forward_movement_error()
             except TypeError:
                 pass
             else:
-                self._motor_stabilised_speed["1"] = self._compute_stabilised_speed("1", error, direction)
-                self._motor_stabilised_speed["2"] = self._compute_stabilised_speed("2", error, direction)
-                self._motor_stabilised_speed["3"] = self._motor_actual_speed["3"]
-                self._motor_stabilised_speed["4"] = self._motor_actual_speed["4"]
-                self._motor_stabilised_speed["5"] = self._motor_actual_speed["5"]
-                self._motor_stabilised_speed["6"] = self._motor_actual_speed["6"]
-                self._motor_stabilised_speed["7"] = self._motor_actual_speed["7"]
-                self._motor_stabilised_speed["8"] = self._motor_actual_speed["8"]
+                self._thrusters_stabilised_speed["1"] = self._compute_stabilised_speed("1", error,
+                                                                                       direction_to_compensate)
+                self._thrusters_stabilised_speed["2"] = self._compute_stabilised_speed("2", error,
+                                                                                       direction_to_compensate)
+                self._thrusters_stabilised_speed["3"] = self._thrusters_actual_speed["3"]
+                self._thrusters_stabilised_speed["4"] = self._thrusters_actual_speed["4"]
+                self._thrusters_stabilised_speed["5"] = self._thrusters_actual_speed["5"]
+                self._thrusters_stabilised_speed["6"] = self._thrusters_actual_speed["6"]
+                self._thrusters_stabilised_speed["7"] = self._thrusters_actual_speed["7"]
+                self._thrusters_stabilised_speed["8"] = self._thrusters_actual_speed["8"]
 
     def publish_stabilised_speed(self):
         """Publish the stabilised motor speed."""
         self._update_stabilised_speed()
         self._stabilised_speed_publisher.publish(
-            self._motor_stabilised_speed["1"],
-            self._motor_stabilised_speed["2"],
-            self._motor_stabilised_speed["3"],
-            self._motor_stabilised_speed["4"],
-            self._motor_stabilised_speed["5"],
-            self._motor_stabilised_speed["6"],
-            self._motor_stabilised_speed["7"],
-            self._motor_stabilised_speed["8"]
+            self._thrusters_stabilised_speed["1"],
+            self._thrusters_stabilised_speed["2"],
+            self._thrusters_stabilised_speed["3"],
+            self._thrusters_stabilised_speed["4"],
+            self._thrusters_stabilised_speed["5"],
+            self._thrusters_stabilised_speed["6"],
+            self._thrusters_stabilised_speed["7"],
+            self._thrusters_stabilised_speed["8"]
         )

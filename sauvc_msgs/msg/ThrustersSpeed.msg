@@ -1,0 +1,8 @@
+int16 thruster_id1_speed
+int16 thruster_id2_speed
+int16 thruster_id3_speed
+int16 thruster_id4_speed
+int16 thruster_id5_speed
+int16 thruster_id6_speed
+int16 thruster_id7_speed
+int16 thruster_id8_speed

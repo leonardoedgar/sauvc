@@ -1,0 +1,4 @@
+<launch>
+    <node name="control_node" pkg="sauvc_control" type="control_node.py" output="screen">
+    </node>
+</launch>

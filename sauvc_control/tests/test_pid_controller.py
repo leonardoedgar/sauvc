@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
-from sauvc2020_control import PIDController
-from sauvc2020_msgs.msg import MotorSpeed
+from sauvc_control import PIDController
+from sauvc_msgs.msg import ThrustersSpeed
 import pytest
 import math
 
@@ -29,7 +29,7 @@ def test_get_quarternion_data(mocker):
     w, x, y, z = 0, 0.1, 0.3, 0.5
     alpha, beta, gamma = 0, 45, 90
     mocked_get_euler_angle_from_quat = \
-        mocker.patch('sauvc2020_control.pid_controller.PIDController.get_euler_angle_from_quat')
+        mocker.patch('sauvc_control.pid_controller.PIDController.get_euler_angle_from_quat')
     PIDController.get_euler_angle_from_quat.return_value = alpha, beta, gamma
     msg.quaternion.w, msg.quaternion.x, msg.quaternion.y, msg.quaternion.z = w, x, y, z
     pid_controller._get_quaternion_data(msg)
@@ -39,7 +39,7 @@ def test_get_quarternion_data(mocker):
 
 def test_get_euler_angle_from_quaternion():
     """Test that PID Controller is able to get euler angle from quaternion."""
-    w, x, y, z = 0, 0, math.sin(math.pi/4), math.cos(math.pi/4)
+    w, x, y, z = 0, 0, math.sin(math.pi / 4), math.cos(math.pi / 4)
     desired_alpha, desired_beta, desired_gamma = 90, 0, 180
     tolerable_error = 0.1
     actual_alpha, actual_beta, actual_gamma = PIDController.get_euler_angle_from_quat(w, x, y, z)
@@ -52,8 +52,8 @@ def test_update_motion_data(mocker):
     pid_controller = get_sample_pid_controller()
     msg, motion_data = get_mocked_motion_data(mocker)
     pid_controller._update_motion_data(msg)
-    assert pid_controller._robot_motion == motion_data["motion"]
-    assert pid_controller._motor_actual_speed == motion_data["motors_speed"]
+    assert pid_controller._auv_motion == motion_data["motion"]
+    assert pid_controller._thrusters_actual_speed == motion_data["thrusters_speed"]
 
 
 @pytest.mark.parametrize("actual_euler, target_euler, error, direction_to_compensate", [
@@ -77,31 +77,31 @@ def test_compute_forward_movement_error(actual_euler, target_euler, error, direc
     assert math.fabs(actual_error - error) <= allowable_tolerance
 
 
-@pytest.mark.parametrize("motor_id, error, direction, stabilised_speed", [
+@pytest.mark.parametrize("thruster_id, error, direction, stabilised_speed", [
     ("1", 3, "CCW", 1575),
     ("2", 2, "CW", 1550)
 ])
-def test_compute_stabilised_speed(motor_id, error, direction, stabilised_speed):
+def test_compute_stabilised_speed(thruster_id, error, direction, stabilised_speed):
     """Test that PID Controller is able to compute stabilised speed correctly."""
     pid_controller = get_sample_pid_controller()
-    assert pid_controller._compute_stabilised_speed(motor_id, error, direction) == stabilised_speed
+    assert pid_controller._compute_stabilised_speed(thruster_id, error, direction) == stabilised_speed
 
 
 def test_update_stabilised_speed(mocker):
     """Test that PID Controller is able to update its stabilised speed."""
-    pid_controller, motors_speed = get_pid_controller_with_mocked_actual_motors_speed()
+    pid_controller, thrusters_speed = get_pid_controller_with_mocked_actual_thrusters_speed()
     pid_controller._compute_forward_movement_error = mocker.MagicMock()
     pid_controller._compute_forward_movement_error.return_value = "CW", 0.01
     pid_controller._compute_stabilised_speed = mocker.MagicMock()
-    pid_controller._compute_stabilised_speed.side_effect = [motors_speed["1"], motors_speed["2"]]
-    pid_controller._robot_motion = "forward"
+    pid_controller._compute_stabilised_speed.side_effect = [thrusters_speed["1"], thrusters_speed["2"]]
+    pid_controller._auv_motion = "forward"
     pid_controller._update_stabilised_speed()
-    assert pid_controller._motor_stabilised_speed == motors_speed
+    assert pid_controller._thrusters_stabilised_speed == thrusters_speed
 
 
 def get_sample_pid_controller():
     """Setup function to create PID Controller"""
-    return PIDController(rospy.Publisher('/motor/stabilised_speed', MotorSpeed, queue_size=10))
+    return PIDController(rospy.Publisher('/thrusters/stabilised_speed', ThrustersSpeed, queue_size=10))
 
 
 def get_mocked_motion_data(mocker):
@@ -109,38 +109,38 @@ def get_mocked_motion_data(mocker):
     msg = mocker.MagicMock()
     motion_data = {
         "motion": "forward",
-        "motors_speed": get_mocked_motors_speed()
+        "thrusters_speed": get_mocked_thrusters_speed()
     }
     msg.motion, \
-        msg.motors_speed.motor_id1_speed, \
-        msg.motors_speed.motor_id2_speed, \
-        msg.motors_speed.motor_id3_speed, \
-        msg.motors_speed.motor_id4_speed, \
-        msg.motors_speed.motor_id5_speed, \
-        msg.motors_speed.motor_id6_speed, \
-        msg.motors_speed.motor_id7_speed, \
-        msg.motors_speed.motor_id8_speed = motion_data["motion"], \
-                                           motion_data["motors_speed"]["1"], \
-                                           motion_data["motors_speed"]["2"], \
-                                           motion_data["motors_speed"]["3"], \
-                                           motion_data["motors_speed"]["4"], \
-                                           motion_data["motors_speed"]["5"], \
-                                           motion_data["motors_speed"]["6"], \
-                                           motion_data["motors_speed"]["7"], \
-                                           motion_data["motors_speed"]["8"]
+    msg.thrusters_speed.thruster_id1_speed, \
+    msg.thrusters_speed.thruster_id2_speed, \
+    msg.thrusters_speed.thruster_id3_speed, \
+    msg.thrusters_speed.thruster_id4_speed, \
+    msg.thrusters_speed.thruster_id5_speed, \
+    msg.thrusters_speed.thruster_id6_speed, \
+    msg.thrusters_speed.thruster_id7_speed, \
+    msg.thrusters_speed.thruster_id8_speed = motion_data["motion"], \
+                                             motion_data["thrusters_speed"]["1"], \
+                                             motion_data["thrusters_speed"]["2"], \
+                                             motion_data["thrusters_speed"]["3"], \
+                                             motion_data["thrusters_speed"]["4"], \
+                                             motion_data["thrusters_speed"]["5"], \
+                                             motion_data["thrusters_speed"]["6"], \
+                                             motion_data["thrusters_speed"]["7"], \
+                                             motion_data["thrusters_speed"]["8"]
     return msg, motion_data
 
 
-def get_pid_controller_with_mocked_actual_motors_speed():
-    """Setup PID Controller with mocked actual motors speed"""
+def get_pid_controller_with_mocked_actual_thrusters_speed():
+    """Setup PID Controller with mocked actual thrusters speed"""
     pid_controller = get_sample_pid_controller()
-    motors_speed = get_mocked_motors_speed()
-    pid_controller._motor_actual_speed = motors_speed
-    return pid_controller, motors_speed
+    thrusters_speed = get_mocked_thrusters_speed()
+    pid_controller._thrusters_actual_speed = thrusters_speed
+    return pid_controller, thrusters_speed
 
 
-def get_mocked_motors_speed():
-    """A function to get mocked motors speed."""
+def get_mocked_thrusters_speed():
+    """A function to get mocked thrusters speed."""
     return {
         "1": 1400,
         "2": 1500,
@@ -166,8 +166,7 @@ def get_pid_controller_with_mocked_stabilised_speed(mocker):
         "6": 1600,
         "7": 1750,
         "8": 1600
-
     }
-    pid_controller._motor_stabilised_speed = sample_stabilised_speed
+    pid_controller._thrusters_stabilised_speed = sample_stabilised_speed
     pid_controller._update_stabilised_speed = mocker.MagicMock()
     return pid_controller, sample_stabilised_speed
