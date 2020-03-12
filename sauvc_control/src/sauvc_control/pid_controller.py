@@ -17,26 +17,25 @@ class PIDController(object):
         self._stabilised_speed_publisher = stabilised_speed_publisher  # type: type(rospy.Publisher)
         self._auv_motion = "stop"  # type: str
         self._P = 25  # type: float
-        thruster_initial_speed = 1500  # type: int
         self._thrusters_stabilised_speed = {
-            "1": thruster_initial_speed,
-            "2": thruster_initial_speed,
-            "3": thruster_initial_speed,
-            "4": thruster_initial_speed,
-            "5": thruster_initial_speed,
-            "6": thruster_initial_speed,
-            "7": thruster_initial_speed,
-            "8": thruster_initial_speed
+            "1": int,
+            "2": int,
+            "3": int,
+            "4": int,
+            "5": int,
+            "6": int,
+            "7": int,
+            "8": int
         }  # type: dict
         self._thrusters_actual_speed = {
-            "1": thruster_initial_speed,
-            "2": thruster_initial_speed,
-            "3": thruster_initial_speed,
-            "4": thruster_initial_speed,
-            "5": thruster_initial_speed,
-            "6": thruster_initial_speed,
-            "7": thruster_initial_speed,
-            "8": thruster_initial_speed
+            "1": int,
+            "2": int,
+            "3": int,
+            "4": int,
+            "5": int,
+            "6": int,
+            "7": int,
+            "8": int
         }  # type: dict
         self._actual_euler = {"alpha": float, "beta": float, "gamma": float}  # type: dict
         self._target_euler = {"alpha": float, "beta": float, "gamma": float}  # type: dict
@@ -114,32 +113,32 @@ class PIDController(object):
     def _update_stabilised_speed(self):
         """Update the stabilised speed."""
         if self._auv_motion == "forward":
-            try:
-                direction_to_compensate, error = self._compute_forward_movement_error()
-            except TypeError:
-                pass
-            else:
-                self._thrusters_stabilised_speed["1"] = self._compute_stabilised_speed("1", error,
-                                                                                       direction_to_compensate)
-                self._thrusters_stabilised_speed["2"] = self._compute_stabilised_speed("2", error,
-                                                                                       direction_to_compensate)
-                self._thrusters_stabilised_speed["3"] = self._thrusters_actual_speed["3"]
-                self._thrusters_stabilised_speed["4"] = self._thrusters_actual_speed["4"]
-                self._thrusters_stabilised_speed["5"] = self._thrusters_actual_speed["5"]
-                self._thrusters_stabilised_speed["6"] = self._thrusters_actual_speed["6"]
-                self._thrusters_stabilised_speed["7"] = self._thrusters_actual_speed["7"]
-                self._thrusters_stabilised_speed["8"] = self._thrusters_actual_speed["8"]
+            direction_to_compensate, error = self._compute_forward_movement_error()
+            self._thrusters_stabilised_speed["1"] = self._compute_stabilised_speed("1", error,
+                                                                                   direction_to_compensate)
+            self._thrusters_stabilised_speed["2"] = self._compute_stabilised_speed("2", error,
+                                                                                   direction_to_compensate)
+            self._thrusters_stabilised_speed["3"] = self._thrusters_actual_speed["3"]
+            self._thrusters_stabilised_speed["4"] = self._thrusters_actual_speed["4"]
+            self._thrusters_stabilised_speed["5"] = self._thrusters_actual_speed["5"]
+            self._thrusters_stabilised_speed["6"] = self._thrusters_actual_speed["6"]
+            self._thrusters_stabilised_speed["7"] = self._thrusters_actual_speed["7"]
+            self._thrusters_stabilised_speed["8"] = self._thrusters_actual_speed["8"]
 
     def publish_stabilised_speed(self):
         """Publish the stabilised motor speed."""
-        self._update_stabilised_speed()
-        self._stabilised_speed_publisher.publish(
-            self._thrusters_stabilised_speed["1"],
-            self._thrusters_stabilised_speed["2"],
-            self._thrusters_stabilised_speed["3"],
-            self._thrusters_stabilised_speed["4"],
-            self._thrusters_stabilised_speed["5"],
-            self._thrusters_stabilised_speed["6"],
-            self._thrusters_stabilised_speed["7"],
-            self._thrusters_stabilised_speed["8"]
-        )
+        try:
+            self._update_stabilised_speed()
+        except TypeError:
+            pass
+        else:
+            self._stabilised_speed_publisher.publish(
+                self._thrusters_stabilised_speed["1"],
+                self._thrusters_stabilised_speed["2"],
+                self._thrusters_stabilised_speed["3"],
+                self._thrusters_stabilised_speed["4"],
+                self._thrusters_stabilised_speed["5"],
+                self._thrusters_stabilised_speed["6"],
+                self._thrusters_stabilised_speed["7"],
+                self._thrusters_stabilised_speed["8"]
+            )

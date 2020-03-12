@@ -77,14 +77,15 @@ def test_compute_forward_movement_error(actual_euler, target_euler, error, direc
     assert math.fabs(actual_error - error) <= allowable_tolerance
 
 
-@pytest.mark.parametrize("thruster_id, error, direction, stabilised_speed", [
-    ("1", 3, "CCW", 1575),
-    ("2", 2, "CW", 1550)
+@pytest.mark.parametrize("thruster_id, error, direction, stabilising_speed", [
+    ("1", 3, "CCW", 75),
+    ("2", 2, "CW", 50)
 ])
-def test_compute_stabilised_speed(thruster_id, error, direction, stabilised_speed):
+def test_compute_stabilised_speed(thruster_id, error, direction, stabilising_speed):
     """Test that PID Controller is able to compute stabilised speed correctly."""
-    pid_controller = get_sample_pid_controller()
-    assert pid_controller._compute_stabilised_speed(thruster_id, error, direction) == stabilised_speed
+    pid_controller, thrusters_speed = get_pid_controller_with_mocked_actual_thrusters_speed()
+    assert pid_controller._compute_stabilised_speed(thruster_id, error, direction) == int(thrusters_speed[thruster_id])\
+        + stabilising_speed
 
 
 def test_update_stabilised_speed(mocker):
