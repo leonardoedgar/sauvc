@@ -132,13 +132,16 @@ class PIDController(object):
         except TypeError:
             pass
         else:
-            self._stabilised_speed_publisher.publish(
-                self._thrusters_stabilised_speed["1"],
-                self._thrusters_stabilised_speed["2"],
-                self._thrusters_stabilised_speed["3"],
-                self._thrusters_stabilised_speed["4"],
-                self._thrusters_stabilised_speed["5"],
-                self._thrusters_stabilised_speed["6"],
-                self._thrusters_stabilised_speed["7"],
-                self._thrusters_stabilised_speed["8"]
-            )
+            try:
+                self._stabilised_speed_publisher.publish(
+                    self._thrusters_stabilised_speed["1"],
+                    self._thrusters_stabilised_speed["2"],
+                    self._thrusters_stabilised_speed["3"],
+                    self._thrusters_stabilised_speed["4"],
+                    self._thrusters_stabilised_speed["5"],
+                    self._thrusters_stabilised_speed["6"],
+                    self._thrusters_stabilised_speed["7"],
+                    self._thrusters_stabilised_speed["8"]
+                )
+            except rospy.ROSSerializationException:
+                pass
